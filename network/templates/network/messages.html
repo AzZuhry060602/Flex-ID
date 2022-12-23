@@ -1,0 +1,143 @@
+{% extends "network/layout.html" %}
+{% load static %}
+{% block body %}
+<style>
+.container {
+    border: 2px solid #dedede;
+    background-color: #f1f1f1;
+    border-radius: 5px;
+    padding: 10px;
+    margin-right:1px
+}
+.messages{
+    margin-top: 50px;
+    position: static;
+    width: 700px;
+    height: 500px;
+    position:sticky;
+    margin-right: 1px;
+    background-color: white;
+    border-top: 1px solid #e6ecf0;
+    padding: 8px 18px 8px 18px;
+    font-size: .9em;
+}
+#msg_field{
+    margin-left: 24px;
+    margin-top: 16px;
+    width: 600px;
+}
+</style>
+<div class="main-div">
+    <div class="main-div-content">
+        <div class="posts-view">
+            
+  
+    <div class="messages" id="board">
+    {% for message in messages %}
+        {% if curr_user == message.sender_name %}
+            <div class="container darker">
+                <span>{{ message.sender_name }}</span>
+                <p>{{message.description}}</p>
+                <span class="time-right">{{message.time}}</span>
+            </div>
+        {% else %}
+            <div class="container">
+                <p>{{message.description}}</p>
+                <span class="time-left">{{message.time}}</span>
+            </div>
+        {% endif %}
+    {% endfor %}
+    </div>
+    <div class="row">
+        <form method="post" class="form-group" id="chat-box">
+            {% csrf_token %}
+            <div class="input-group mb-3">
+                <div class="input-group-prepend">
+                    <input type="text" placeholder="Send a message..." name="message" id="msg_field">
+                    <button type="submit" name="send" class="btn btn-success" id="send_btn">Send</button>
+                </div>
+            </div>
+        </form>
+    </div>
+    </div>
+    </div>
+</div>
+
+<script>
+var messageBody = document.querySelector('.messages');
+messageBody.scrollTop = messageBody.scrollHeight - messageBody.clientHeight;
+
+sender_id = "{{ friend.id }}";
+receiver_id = "{{ curr_user.id }}";
+
+function scrolltoend() {
+    $('#board').stop().animate({
+        scrollTop: $('#board')[0].scrollHeight
+    }, 800);
+ }
+
+const text_box = '<div class="container darker">' +
+    '<img src="{% static 'images/logo-icon.png' %}" alt="Avatar" class="right" style="width:100%;">' +
+    '<p>{description}</p>' +
+    '<span class="time-right">{time}</span>' +
+    '</div>'
+
+//For sending
+$(function () {
+    $('#chat-box').on('submit', function (event) {
+        event.preventDefault();
+        var message = $('#msg_field');
+        send('{{ curr_user.username }}', '{{ friend.username }}', message.val());
+        message.val('');
+    })
+})
+
+function send(sender, receiver, message){
+
+    $.post('/api/messages', '{"sender_name": "' + sender + '", "receiver_name": "' +
+            receiver + '","description": "' + message + '" }', function (data) {
+        var field = text_box.replace('{description}', message);
+        var today = new Date();
+        var time = today.getHours() + ":" + today.getMinutes()
+        field = field.replace('{time}', time)
+        $('#board').append(field);
+        scrolltoend();
+    })
+}
+
+
+
+</script>
+<script>
+function scrolltoend() {
+    $('#board').stop().animate({
+        scrollTop: $('#board')[0].scrollHeight
+    }, 800);
+}
+
+$(function () {
+    setInterval(receive, 1000)
+})
+
+const text = '<div class="container">'
+            + '<img src="{% static 'images/user_image.jpg' %}" alt="Avatar" style="width:100%;">' +
+            '<p>{description}</p>' +
+            '<span class="time-left">{time}</span>' +
+            '</div>'
+
+function receive(){
+    $.get('/api/messages/' + sender_id + '/' + receiver_id, function(data){
+        if(data.length !== 0){
+            for(var i = 0; i < data.length; i++){
+                var field = text.replace('{description}', data[i].description);
+                var time = data[i].time.slice(0, 5) + ' a.m'
+                field = field.replace('{time}', time);
+                $('#board').append(field);
+                scrolltoend();
+            }
+        }
+    })
+}
+
+</script>
+{% endblock %}
